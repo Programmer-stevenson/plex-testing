@@ -1,145 +1,254 @@
 'use client';
 
-import React from 'react';
+import React, { useRef, useEffect } from 'react';
+import * as THREE from 'three';
 import { useIsMobile } from '@/hooks';
 
 interface HeroCanvasProps {
   className?: string;
 }
 
-/**
- * HeroCanvas - 3D Rotating Diamond Cube
- * ULTRA OPTIMIZED for all mobile devices
- * - Pure CSS animation (no JS animation library on mobile)
- * - Zero blur effects on mobile
- * - Zero shadows on mobile
- * - Hardware accelerated transforms only
- */
 export default function HeroCanvas({ className = '' }: HeroCanvasProps) {
+  const containerRef = useRef<HTMLDivElement>(null);
   const isMobile = useIsMobile();
-  const cubeSize = isMobile ? 90 : 160;
-  const halfSize = cubeSize / 2;
+
+  useEffect(() => {
+    if (!containerRef.current) return;
+
+    const container = containerRef.current;
+    const width = container.clientWidth || 300;
+    const height = container.clientHeight || 300;
+
+    // Scene
+    const scene = new THREE.Scene();
+    
+    // Camera
+    const camera = new THREE.PerspectiveCamera(50, width / height, 0.1, 1000);
+    camera.position.z = 5;
+
+    // Renderer - fully transparent background
+    const renderer = new THREE.WebGLRenderer({ 
+      antialias: true, 
+      alpha: true,
+      premultipliedAlpha: false,
+    });
+    renderer.setSize(width, height);
+    renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+    renderer.setClearColor(0x000000, 0);
+    container.appendChild(renderer.domElement);
+
+    // Colors
+    const icyBlue = 0x7DF9FF;
+    const lightOrange = 0xFFB347;
+
+    // Cube dimensions - 2X LARGER on mobile
+    const cubeSize = isMobile ? 2.4 : 1.6;
+    const halfCube = cubeSize / 2;
+
+    // Geometry
+    const geometry = new THREE.BoxGeometry(cubeSize, cubeSize, cubeSize);
+
+    // Bright icy blue face material - half transparent
+    const faceMaterial = new THREE.MeshBasicMaterial({
+      color: icyBlue,
+      transparent: true,
+      opacity: 0.5,
+      side: THREE.FrontSide,
+      depthWrite: false,
+    });
+
+    const cube = new THREE.Mesh(geometry, faceMaterial);
+    cube.rotation.x = THREE.MathUtils.degToRad(-35);
+    cube.rotation.z = THREE.MathUtils.degToRad(45);
+    scene.add(cube);
+
+    // ORANGE edges
+    const edgesGeometry = new THREE.EdgesGeometry(geometry);
+    const edgesMaterial = new THREE.LineBasicMaterial({ 
+      color: lightOrange, 
+      transparent: true, 
+      opacity: 1,
+    });
+    const edges = new THREE.LineSegments(edgesGeometry, edgesMaterial);
+    edges.rotation.copy(cube.rotation);
+    scene.add(edges);
+
+    // ORANGE glow layers around edges
+    const glowLayers: THREE.LineSegments[] = [];
+    for (let i = 1; i <= 2; i++) {
+      const glowGeo = new THREE.EdgesGeometry(
+        new THREE.BoxGeometry(cubeSize + i * 0.04, cubeSize + i * 0.04, cubeSize + i * 0.04)
+      );
+      const glowMat = new THREE.LineBasicMaterial({ 
+        color: lightOrange, 
+        transparent: true, 
+        opacity: 0.4 / i,
+      });
+      const glow = new THREE.LineSegments(glowGeo, glowMat);
+      glow.rotation.copy(cube.rotation);
+      glowLayers.push(glow);
+      scene.add(glow);
+    }
+
+    // Logo texture loader
+    const textureLoader = new THREE.TextureLoader();
+    const logoTexture = textureLoader.load('/plexxx.png', (texture) => {
+      const imgAspect = texture.image.width / texture.image.height;
+      logoPlanes.forEach(plane => {
+        if (imgAspect > 1) {
+          plane.scale.set(logoSize, logoSize / imgAspect, 1);
+        } else {
+          plane.scale.set(logoSize * imgAspect, logoSize, 1);
+        }
+      });
+    });
+    logoTexture.colorSpace = THREE.SRGBColorSpace;
+
+    // Shared logo material
+    const logoMaterial = new THREE.MeshBasicMaterial({
+      map: logoTexture,
+      transparent: true,
+      side: THREE.DoubleSide,
+      depthWrite: false,
+    });
+
+    // Logo size - larger on mobile too
+    const logoSize = isMobile ? 1.1 : 0.75;
+    const logoOffset = 0.01;
+
+    // Face positions/rotations
+    const faceData: [number, number, number, number, number, number][] = [
+      [0, 0, halfCube + logoOffset, 0, 0, 0],
+      [0, 0, -halfCube - logoOffset, 0, Math.PI, 0],
+      [halfCube + logoOffset, 0, 0, 0, Math.PI / 2, 0],
+      [-halfCube - logoOffset, 0, 0, 0, -Math.PI / 2, 0],
+      [0, halfCube + logoOffset, 0, -Math.PI / 2, 0, 0],
+      [0, -halfCube - logoOffset, 0, Math.PI / 2, 0, 0],
+    ];
+
+    // Single geometry for all logo planes
+    const logoGeometry = new THREE.PlaneGeometry(1, 1);
+    const logoPlanes: THREE.Mesh[] = [];
+
+    for (let i = 0; i < 6; i++) {
+      const [px, py, pz, rx, ry, rz] = faceData[i];
+      const mesh = new THREE.Mesh(logoGeometry, logoMaterial);
+      mesh.position.set(px, py, pz);
+      mesh.rotation.set(rx, ry, rz);
+      mesh.scale.set(logoSize, logoSize, 1);
+      logoPlanes.push(mesh);
+      cube.add(mesh);
+    }
+
+    // Particles - desktop only, orange
+    let particlesMesh: THREE.InstancedMesh | null = null;
+    const particleCount = 8;
+    const particleRadius = 2.0;
+    const dummy = new THREE.Object3D();
+
+    if (!isMobile) {
+      const particleGeo = new THREE.SphereGeometry(0.03, 6, 6);
+      const particleMat = new THREE.MeshBasicMaterial({ color: lightOrange });
+      particlesMesh = new THREE.InstancedMesh(particleGeo, particleMat, particleCount);
+      scene.add(particlesMesh);
+    }
+
+    // Orbital ring - desktop only, orange
+    let ring: THREE.Mesh | null = null;
+    if (!isMobile) {
+      const ringGeo = new THREE.RingGeometry(2.0, 2.03, 48);
+      const ringMat = new THREE.MeshBasicMaterial({ 
+        color: lightOrange, 
+        transparent: true, 
+        opacity: 0.3, 
+        side: THREE.DoubleSide 
+      });
+      ring = new THREE.Mesh(ringGeo, ringMat);
+      scene.add(ring);
+    }
+
+    // Animation loop
+    const rotationSpeed = isMobile ? 0.003 : 0.004;
+    let animationId: number;
+    let time = 0;
+
+    const animate = () => {
+      animationId = requestAnimationFrame(animate);
+      time += 0.016;
+
+      // Rotate cube + edges + glow layers
+      cube.rotation.y += rotationSpeed;
+      edges.rotation.y += rotationSpeed;
+      glowLayers.forEach(g => g.rotation.y += rotationSpeed);
+
+      // Update instanced particles
+      if (particlesMesh) {
+        for (let i = 0; i < particleCount; i++) {
+          const angle = (i / particleCount) * Math.PI * 2 + time * 0.5;
+          dummy.position.set(
+            Math.cos(angle) * particleRadius,
+            Math.sin(angle) * particleRadius,
+            0
+          );
+          const s = 0.8 + Math.sin(time * 3 + i) * 0.3;
+          dummy.scale.set(s, s, s);
+          dummy.updateMatrix();
+          particlesMesh.setMatrixAt(i, dummy.matrix);
+        }
+        particlesMesh.instanceMatrix.needsUpdate = true;
+      }
+
+      // Rotate ring
+      if (ring) {
+        ring.rotation.z += 0.002;
+      }
+
+      renderer.render(scene, camera);
+    };
+
+    animate();
+
+    // Resize handler
+    const handleResize = () => {
+      if (!containerRef.current) return;
+      const w = containerRef.current.clientWidth;
+      const h = containerRef.current.clientHeight;
+      camera.aspect = w / h;
+      camera.updateProjectionMatrix();
+      renderer.setSize(w, h);
+    };
+    window.addEventListener('resize', handleResize);
+
+    // Cleanup
+    return () => {
+      cancelAnimationFrame(animationId);
+      window.removeEventListener('resize', handleResize);
+      
+      geometry.dispose();
+      faceMaterial.dispose();
+      edgesGeometry.dispose();
+      edgesMaterial.dispose();
+      logoGeometry.dispose();
+      logoMaterial.dispose();
+      logoTexture.dispose();
+      glowLayers.forEach(g => {
+        g.geometry.dispose();
+        (g.material as THREE.Material).dispose();
+      });
+      
+      renderer.dispose();
+      
+      if (container.contains(renderer.domElement)) {
+        container.removeChild(renderer.domElement);
+      }
+    };
+  }, [isMobile]);
 
   return (
-    <div className={`relative w-full h-full flex items-center justify-center ${className}`}>
-      {/* Simple static glow - mobile / Animated glow - desktop */}
-      <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
-        <div 
-          className={`rounded-full bg-gradient-to-br from-[#007BFF] to-[#00C2CB] ${
-            isMobile 
-              ? 'w-24 h-24 opacity-30' 
-              : 'w-64 h-64 opacity-30 animate-pulse-slow'
-          }`}
-          style={{ filter: isMobile ? 'blur(30px)' : 'blur(60px)' }}
-        />
-      </div>
-
-      {/* 3D Cube Container */}
-      <div 
-        className={`relative ${isMobile ? 'w-36 h-36' : 'w-72 h-72'} flex items-center justify-center`}
-        style={{ perspective: '800px' }}
-      >
-        {/* Diamond tilt wrapper */}
-        <div style={{ 
-          transformStyle: 'preserve-3d',
-          transform: 'rotateX(-35deg) rotateZ(45deg)',
-        }}>
-          {/* Rotating cube - Pure CSS animation */}
-          <div
-            className="cube-rotate"
-            style={{ 
-              width: `${cubeSize}px`,
-              height: `${cubeSize}px`,
-              transformStyle: 'preserve-3d',
-              animation: `spin ${isMobile ? 25 : 15}s linear infinite`,
-            }}
-          >
-            {/* 6 Faces */}
-            {[
-              { transform: `translateZ(${halfSize}px)`, color: 'from-[#007BFF]/25 to-[#00C2CB]/15', border: 'border-[#007BFF]/50' },
-              { transform: `translateZ(-${halfSize}px) rotateY(180deg)`, color: 'from-[#00C2CB]/25 to-[#007BFF]/15', border: 'border-[#007BFF]/50' },
-              { transform: `rotateY(90deg) translateZ(${halfSize}px)`, color: 'from-[#00C2CB]/25 to-[#3EE4A8]/15', border: 'border-[#00C2CB]/50' },
-              { transform: `rotateY(-90deg) translateZ(${halfSize}px)`, color: 'from-[#3EE4A8]/25 to-[#00C2CB]/15', border: 'border-[#00C2CB]/50' },
-              { transform: `rotateX(90deg) translateZ(${halfSize}px)`, color: 'from-[#007BFF]/25 to-[#3EE4A8]/15', border: 'border-[#3EE4A8]/50' },
-              { transform: `rotateX(-90deg) translateZ(${halfSize}px)`, color: 'from-[#3EE4A8]/25 to-[#007BFF]/15', border: 'border-[#3EE4A8]/50' },
-            ].map((face, i) => (
-              <div
-                key={i}
-                className={`absolute inset-0 border ${face.border} bg-gradient-to-br ${face.color} flex items-center justify-center`}
-                style={{ 
-                  transform: face.transform,
-                  backfaceVisibility: 'hidden',
-                  ...(isMobile ? {} : { 
-                    boxShadow: '0 0 20px rgba(0, 123, 255, 0.2), inset 0 0 30px rgba(0, 194, 203, 0.1)',
-                    backdropFilter: 'blur(4px)',
-                  })
-                }}
-              >
-                <img 
-                  src="/plexxx.png" 
-                  alt="" 
-                  className={`${isMobile ? 'w-8 h-8' : 'w-16 h-16'} object-contain opacity-70`}
-                  loading="eager"
-                />
-              </div>
-            ))}
-          </div>
-        </div>
-      </div>
-
-      {/* Particles & Ring - Desktop only */}
-      {!isMobile && (
-        <>
-          {[...Array(6)].map((_, i) => (
-            <div
-              key={i}
-              className="absolute w-1.5 h-1.5 bg-[#00C2CB] rounded-full animate-pulse"
-              style={{
-                top: `${35 + 30 * Math.sin((i * Math.PI * 2) / 6)}%`,
-                left: `${35 + 30 * Math.cos((i * Math.PI * 2) / 6)}%`,
-                animationDelay: `${i * 0.5}s`,
-              }}
-            />
-          ))}
-          <svg className="absolute inset-0 w-full h-full pointer-events-none" viewBox="0 0 400 400">
-            <circle
-              cx="200"
-              cy="200"
-              r="150"
-              fill="none"
-              stroke="url(#ringGrad)"
-              strokeWidth="1"
-              strokeDasharray="8 16"
-              className="animate-spin-slow"
-              style={{ transformOrigin: 'center' }}
-            />
-            <defs>
-              <linearGradient id="ringGrad" x1="0%" y1="0%" x2="100%" y2="100%">
-                <stop offset="0%" stopColor="#007BFF" stopOpacity="0.4" />
-                <stop offset="100%" stopColor="#00C2CB" stopOpacity="0.4" />
-              </linearGradient>
-            </defs>
-          </svg>
-        </>
-      )}
-
-      {/* CSS Keyframes */}
-      <style jsx>{`
-        @keyframes spin {
-          from { transform: rotateY(0deg); }
-          to { transform: rotateY(360deg); }
-        }
-        .animate-spin-slow {
-          animation: spin 40s linear infinite;
-        }
-        .animate-pulse-slow {
-          animation: pulse 4s ease-in-out infinite;
-        }
-        @keyframes pulse {
-          0%, 100% { opacity: 0.2; transform: scale(1); }
-          50% { opacity: 0.4; transform: scale(1.1); }
-        }
-      `}</style>
-    </div>
+    <div 
+      ref={containerRef} 
+      className={`relative w-full h-full min-h-[250px] ${className}`}
+      style={{ background: 'transparent' }}
+    />
   );
 }

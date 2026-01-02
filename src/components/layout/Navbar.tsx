@@ -3,7 +3,6 @@
 import { useState } from 'react';
 import Link from 'next/link';
 import { Menu, X } from 'lucide-react';
-import { motion } from 'framer-motion';
 import { useScrolled } from '@/hooks';
 
 export default function Navbar() {
@@ -16,35 +15,14 @@ export default function Navbar() {
         <div className="max-w-7xl mx-auto px-6 py-4">
           <div className="flex items-center justify-between">
             <Link href="/" className="flex items-center group cursor-pointer">
-              <span className="text-4xl font-bold tracking-tight relative inline-block">
-                <span className="flex items-center">
-                  <span className="relative inline-block w-[2.4em] h-[2.4em]">
-                    <img 
-                      src="/plexxx.png"
-                      alt="P" 
-                      className="w-[2.4em] h-[2.4em] object-contain absolute inset-0 logo-tech-pulse"
-                    />
-                    <span 
-                      className="absolute inset-0 flex items-center justify-center plexura-glow-slow text-4xl font-bold"
-                    >
-                      P
-                    </span>
-                  </span>
-                  
-                  {['l','e','x','u','r','a'].map((letter, index) => (
-                    <span
-                      key={index}
-                      className="inline-block plexura-glow-slow"
-                      style={{ 
-                        animationDelay: `${(index + 2) * 0.1}s`,
-                        marginLeft: index === 0 ? '-0.6em' : '0',
-                      }}
-                    >
-                      {letter}
-                    </span>
-                  ))}
-                </span>
-              </span>
+              {/* Logo + lexura overlapping to spell "Plexura" */}
+              <img 
+                src="/plexxx.png"
+                alt="P" 
+                className="w-[2.4em] h-[2.4em] object-contain logo-tech-pulse"
+                style={{ fontSize: '2.25rem' }}
+              />
+              <span className="text-4xl font-bold text-white" style={{ marginLeft: 'calc(-0.5em - 6px)' }}>lexura</span>
             </Link>
 
             <div className="hidden md:flex items-center space-x-8">
@@ -92,16 +70,16 @@ export default function Navbar() {
             <div className="relative h-full flex flex-col">
               <div className="px-8 pt-8 pb-6">
                 <div className="flex items-center justify-between mb-6">
-                  <span className="text-3xl font-bold tracking-tight">
-                    <span className="flex items-center">
-                      <img src="/plexxx.png" alt="P" className="w-[2em] h-[2em] object-contain inline-block logo-tech-pulse" />
-                      {['l','e','x','u','r','a'].map((letter, index) => (
-                        <span key={index} className="inline-block text-[#EAEAEA]" style={{ marginLeft: index === 0 ? '-0.5em' : '0' }}>
-                          {letter}
-                        </span>
-                      ))}
-                    </span>
-                  </span>
+                  {/* Mobile logo + lexura overlapping */}
+                  <div className="flex items-center">
+                    <img 
+                      src="/plexxx.png" 
+                      alt="P" 
+                      className="w-[2em] h-[2em] object-contain logo-tech-pulse"
+                      style={{ fontSize: '1.875rem' }}
+                    />
+                    <span className="text-3xl font-bold text-white" style={{ marginLeft: 'calc(-0.45em - 6px)' }}>lexura</span>
+                  </div>
                   <button 
                     onClick={() => setMobileMenuOpen(false)}
                     className="w-10 h-10 flex items-center justify-center rounded-full bg-white/5 hover:bg-white/10 border border-[#00C2CB]/20 hover:border-[#00C2CB]/50 transition-all duration-300 group"
