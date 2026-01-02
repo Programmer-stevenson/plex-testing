@@ -8,48 +8,137 @@ interface HeroCanvasProps {
   className?: string;
 }
 
+// ===========================================
+// CSS 3D CUBE COMPONENT - MOBILE ONLY
+// Pure CSS transforms, no WebGL, 60fps guaranteed
+// ===========================================
+function CSSCube() {
+  return (
+    <div className="css-cube-container">
+      <div className="css-cube-wrapper">
+        <div className="css-cube">
+          {/* 6 faces with logo */}
+          <div className="css-cube-face front">
+            <img src="/plexxx.png" alt="" className="css-cube-logo" />
+          </div>
+          <div className="css-cube-face back">
+            <img src="/plexxx.png" alt="" className="css-cube-logo" />
+          </div>
+          <div className="css-cube-face right">
+            <img src="/plexxx.png" alt="" className="css-cube-logo" />
+          </div>
+          <div className="css-cube-face left">
+            <img src="/plexxx.png" alt="" className="css-cube-logo" />
+          </div>
+          <div className="css-cube-face top">
+            <img src="/plexxx.png" alt="" className="css-cube-logo" />
+          </div>
+          <div className="css-cube-face bottom">
+            <img src="/plexxx.png" alt="" className="css-cube-logo" />
+          </div>
+        </div>
+      </div>
+
+      <style jsx>{`
+        .css-cube-container {
+          width: 100%;
+          height: 100%;
+          min-height: 250px;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          perspective: 1000px;
+        }
+
+        .css-cube-wrapper {
+          width: 150px;
+          height: 150px;
+          transform-style: preserve-3d;
+          transform: rotateX(-35deg) rotateZ(45deg);
+        }
+
+        .css-cube {
+          width: 100%;
+          height: 100%;
+          position: relative;
+          transform-style: preserve-3d;
+          animation: css-cube-rotate 15s linear infinite;
+        }
+
+        @keyframes css-cube-rotate {
+          from { transform: rotateY(0deg); }
+          to { transform: rotateY(360deg); }
+        }
+
+        .css-cube-face {
+          position: absolute;
+          width: 150px;
+          height: 150px;
+          background: rgba(192, 192, 192, 0.5);
+          border: 2px solid rgba(192, 192, 192, 1);
+          box-shadow: 
+            0 0 10px rgba(192, 192, 192, 0.3),
+            inset 0 0 20px rgba(192, 192, 192, 0.1);
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          backface-visibility: visible;
+        }
+
+        .css-cube-logo {
+          width: 60%;
+          height: 60%;
+          object-fit: contain;
+        }
+
+        .front  { transform: translateZ(75px); }
+        .back   { transform: rotateY(180deg) translateZ(75px); }
+        .right  { transform: rotateY(90deg) translateZ(75px); }
+        .left   { transform: rotateY(-90deg) translateZ(75px); }
+        .top    { transform: rotateX(90deg) translateZ(75px); }
+        .bottom { transform: rotateX(-90deg) translateZ(75px); }
+      `}</style>
+    </div>
+  );
+}
+
+// ===========================================
+// MAIN COMPONENT
+// ===========================================
 export default function HeroCanvas({ className = '' }: HeroCanvasProps) {
   const containerRef = useRef<HTMLDivElement>(null);
   const isMobile = useIsMobile();
 
+  // ===========================================
+  // THREE.JS - DESKTOP ONLY
+  // ===========================================
   useEffect(() => {
-    if (!containerRef.current) return;
+    // Skip Three.js on mobile - use CSS cube instead
+    if (isMobile || !containerRef.current) return;
 
     const container = containerRef.current;
     const width = container.clientWidth || 300;
     const height = container.clientHeight || 300;
 
-    // Scene
     const scene = new THREE.Scene();
-    
-    // Camera
     const camera = new THREE.PerspectiveCamera(50, width / height, 0.1, 1000);
     camera.position.z = 5;
 
-    // Renderer - optimized for mobile
     const renderer = new THREE.WebGLRenderer({ 
-      antialias: !isMobile, // Disable AA on mobile for performance
+      antialias: true, 
       alpha: true,
       premultipliedAlpha: false,
-      powerPreference: 'high-performance',
     });
     renderer.setSize(width, height);
-    // Clamp pixel ratio on mobile (biggest performance gain)
-    renderer.setPixelRatio(isMobile ? Math.min(window.devicePixelRatio, 1.5) : Math.min(window.devicePixelRatio, 2));
+    renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
     renderer.setClearColor(0x000000, 0);
     container.appendChild(renderer.domElement);
 
-    // Silver color
     const silver = 0xC0C0C0;
-
-    // Cube dimensions
-    const cubeSize = isMobile ? 1.2 : 1.6;
+    const cubeSize = 1.6;
     const halfCube = cubeSize / 2;
 
-    // Geometry - reuse single instance
     const geometry = new THREE.BoxGeometry(cubeSize, cubeSize, cubeSize);
-
-    // Silver face material - half transparent (0.5 opacity)
     const faceMaterial = new THREE.MeshBasicMaterial({
       color: silver,
       transparent: true,
@@ -63,7 +152,6 @@ export default function HeroCanvas({ className = '' }: HeroCanvasProps) {
     cube.rotation.z = THREE.MathUtils.degToRad(45);
     scene.add(cube);
 
-    // Silver glowing edges - main
     const edgesGeometry = new THREE.EdgesGeometry(geometry);
     const edgesMaterial = new THREE.LineBasicMaterial({ 
       color: silver, 
@@ -74,7 +162,6 @@ export default function HeroCanvas({ className = '' }: HeroCanvasProps) {
     edges.rotation.copy(cube.rotation);
     scene.add(edges);
 
-    // Silver glow layers around edges
     const glowLayers: THREE.LineSegments[] = [];
     for (let i = 1; i <= 2; i++) {
       const glowGeo = new THREE.EdgesGeometry(
@@ -91,7 +178,6 @@ export default function HeroCanvas({ className = '' }: HeroCanvasProps) {
       scene.add(glow);
     }
 
-    // Logo texture loader
     const textureLoader = new THREE.TextureLoader();
     const logoTexture = textureLoader.load('/plexxx.png', (texture) => {
       const imgAspect = texture.image.width / texture.image.height;
@@ -105,7 +191,6 @@ export default function HeroCanvas({ className = '' }: HeroCanvasProps) {
     });
     logoTexture.colorSpace = THREE.SRGBColorSpace;
 
-    // Shared logo material
     const logoMaterial = new THREE.MeshBasicMaterial({
       map: logoTexture,
       transparent: true,
@@ -113,11 +198,9 @@ export default function HeroCanvas({ className = '' }: HeroCanvasProps) {
       depthWrite: false,
     });
 
-    // Logo size
-    const logoSize = isMobile ? 0.55 : 0.75;
+    const logoSize = 0.75;
     const logoOffset = 0.01;
 
-    // Face positions/rotations
     const faceData: [number, number, number, number, number, number][] = [
       [0, 0, halfCube + logoOffset, 0, 0, 0],
       [0, 0, -halfCube - logoOffset, 0, Math.PI, 0],
@@ -127,7 +210,6 @@ export default function HeroCanvas({ className = '' }: HeroCanvasProps) {
       [0, -halfCube - logoOffset, 0, Math.PI / 2, 0, 0],
     ];
 
-    // Single geometry for all logo planes
     const logoGeometry = new THREE.PlaneGeometry(1, 1);
     const logoPlanes: THREE.Mesh[] = [];
 
@@ -141,107 +223,65 @@ export default function HeroCanvas({ className = '' }: HeroCanvasProps) {
       cube.add(mesh);
     }
 
-    // Particles - desktop only, SMALLER radius
-    let particlesMesh: THREE.InstancedMesh | null = null;
-    const particleCount = 8;
-    const particleRadius = 1.4; // Much smaller
+    // Particles
+    const particleGeo = new THREE.SphereGeometry(0.03, 6, 6);
+    const particleMat = new THREE.MeshBasicMaterial({ color: silver });
+    const particlesMesh = new THREE.InstancedMesh(particleGeo, particleMat, 8);
+    scene.add(particlesMesh);
+
+    // Ring
+    const ringGeo = new THREE.RingGeometry(1.5, 1.53, 48);
+    const ringMat = new THREE.MeshBasicMaterial({ 
+      color: silver, 
+      transparent: true, 
+      opacity: 0.3, 
+      side: THREE.DoubleSide 
+    });
+    const ring = new THREE.Mesh(ringGeo, ringMat);
+    scene.add(ring);
+
     const dummy = new THREE.Object3D();
-
-    if (!isMobile) {
-      const particleGeo = new THREE.SphereGeometry(0.03, 6, 6);
-      const particleMat = new THREE.MeshBasicMaterial({ color: silver });
-      particlesMesh = new THREE.InstancedMesh(particleGeo, particleMat, particleCount);
-      scene.add(particlesMesh);
-    }
-
-    // Orbital ring - desktop only, SMALLER
-    let ring: THREE.Mesh | null = null;
-    if (!isMobile) {
-      const ringGeo = new THREE.RingGeometry(1.5, 1.53, 48); // Much smaller
-      const ringMat = new THREE.MeshBasicMaterial({ 
-        color: silver, 
-        transparent: true, 
-        opacity: 0.3, 
-        side: THREE.DoubleSide 
-      });
-      ring = new THREE.Mesh(ringGeo, ringMat);
-      scene.add(ring);
-    }
-
-    // Animation loop
-    const rotationSpeed = isMobile ? 0.003 : 0.004;
     let animationId: number;
     let time = 0;
-    
-    // Visibility check - stop rendering when tab hidden
-    let isVisible = true;
-    const handleVisibilityChange = () => {
-      isVisible = document.visibilityState === 'visible';
-    };
-    document.addEventListener('visibilitychange', handleVisibilityChange);
 
     const animate = () => {
       animationId = requestAnimationFrame(animate);
-      
-      // Skip if tab not visible
-      if (!isVisible) return;
-      
       time += 0.016;
 
-      // Rotate cube + edges + glow layers
-      cube.rotation.y += rotationSpeed;
-      edges.rotation.y += rotationSpeed;
-      glowLayers.forEach(g => g.rotation.y += rotationSpeed);
+      cube.rotation.y += 0.004;
+      edges.rotation.y += 0.004;
+      glowLayers.forEach(g => g.rotation.y += 0.004);
 
-      // Update instanced particles
-      if (particlesMesh) {
-        for (let i = 0; i < particleCount; i++) {
-          const angle = (i / particleCount) * Math.PI * 2 + time * 0.5;
-          dummy.position.set(
-            Math.cos(angle) * particleRadius,
-            Math.sin(angle) * particleRadius,
-            0
-          );
-          const s = 0.8 + Math.sin(time * 3 + i) * 0.3;
-          dummy.scale.set(s, s, s);
-          dummy.updateMatrix();
-          particlesMesh.setMatrixAt(i, dummy.matrix);
-        }
-        particlesMesh.instanceMatrix.needsUpdate = true;
+      for (let i = 0; i < 8; i++) {
+        const angle = (i / 8) * Math.PI * 2 + time * 0.5;
+        dummy.position.set(Math.cos(angle) * 1.4, Math.sin(angle) * 1.4, 0);
+        const s = 0.8 + Math.sin(time * 3 + i) * 0.3;
+        dummy.scale.set(s, s, s);
+        dummy.updateMatrix();
+        particlesMesh.setMatrixAt(i, dummy.matrix);
       }
+      particlesMesh.instanceMatrix.needsUpdate = true;
 
-      // Rotate ring
-      if (ring) {
-        ring.rotation.z += 0.002;
-      }
+      ring.rotation.z += 0.002;
 
       renderer.render(scene, camera);
     };
 
     animate();
 
-    // Debounced resize handler
-    let resizeTimeout: ReturnType<typeof setTimeout>;
     const handleResize = () => {
-      clearTimeout(resizeTimeout);
-      resizeTimeout = setTimeout(() => {
-        if (!containerRef.current) return;
-        const w = containerRef.current.clientWidth;
-        const h = containerRef.current.clientHeight;
-        camera.aspect = w / h;
-        camera.updateProjectionMatrix();
-        renderer.setSize(w, h);
-      }, 100);
+      if (!containerRef.current) return;
+      const w = containerRef.current.clientWidth;
+      const h = containerRef.current.clientHeight;
+      camera.aspect = w / h;
+      camera.updateProjectionMatrix();
+      renderer.setSize(w, h);
     };
     window.addEventListener('resize', handleResize);
 
-    // Cleanup
     return () => {
       cancelAnimationFrame(animationId);
-      clearTimeout(resizeTimeout);
       window.removeEventListener('resize', handleResize);
-      document.removeEventListener('visibilitychange', handleVisibilityChange);
-      
       geometry.dispose();
       faceMaterial.dispose();
       edgesGeometry.dispose();
@@ -253,15 +293,27 @@ export default function HeroCanvas({ className = '' }: HeroCanvasProps) {
         g.geometry.dispose();
         (g.material as THREE.Material).dispose();
       });
-      
       renderer.dispose();
-      
       if (container.contains(renderer.domElement)) {
         container.removeChild(renderer.domElement);
       }
     };
   }, [isMobile]);
 
+  // ===========================================
+  // RENDER
+  // ===========================================
+  
+  // Mobile: CSS 3D Cube (60fps guaranteed)
+  if (isMobile) {
+    return (
+      <div className={`relative w-full h-full min-h-[250px] ${className}`}>
+        <CSSCube />
+      </div>
+    );
+  }
+
+  // Desktop: Three.js
   return (
     <div 
       ref={containerRef} 
