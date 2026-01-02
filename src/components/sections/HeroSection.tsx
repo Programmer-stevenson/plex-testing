@@ -52,7 +52,7 @@ export default function HeroSection() {
                 <div className="absolute -inset-1 bg-gradient-to-r from-[#007BFF] to-[#00C2CB] rounded-full opacity-30 blur group-hover:opacity-50 transition-all" />
                 <span className="relative px-5 py-2.5 bg-[#0A1A2F]/80 backdrop-blur-sm border border-[#007BFF]/40 rounded-full text-sm text-[#00C2CB] font-medium flex items-center gap-2">
                   <Code size={14} />
-                  Enterprise Web Development Agency
+                 Full Service Digital Agency
                 </span>
               </motion.div>
             </motion.div>
@@ -61,7 +61,7 @@ export default function HeroSection() {
             <motion.div variants={fadeInUp} className="space-y-4">
               <h1 className="text-5xl md:text-6xl lg:text-7xl font-bold leading-[1.1] tracking-tight text-center md:text-left">
                 <motion.span className="block text-[#EAEAEA]">
-                  {"Custom Code.".split("").map((char, i) => (
+                  {".".split("").map((char, i) => (
                     <motion.span
                       key={i}
                       custom={i}

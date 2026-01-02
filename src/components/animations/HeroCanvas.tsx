@@ -26,31 +26,32 @@ export default function HeroCanvas({ className = '' }: HeroCanvasProps) {
     const camera = new THREE.PerspectiveCamera(50, width / height, 0.1, 1000);
     camera.position.z = 5;
 
-    // Renderer - fully transparent background
+    // Renderer - optimized for mobile
     const renderer = new THREE.WebGLRenderer({ 
-      antialias: true, 
+      antialias: !isMobile, // Disable AA on mobile for performance
       alpha: true,
       premultipliedAlpha: false,
+      powerPreference: 'high-performance',
     });
     renderer.setSize(width, height);
-    renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+    // Clamp pixel ratio on mobile (biggest performance gain)
+    renderer.setPixelRatio(isMobile ? Math.min(window.devicePixelRatio, 1.5) : Math.min(window.devicePixelRatio, 2));
     renderer.setClearColor(0x000000, 0);
     container.appendChild(renderer.domElement);
 
-    // Colors
-    const icyBlue = 0x7DF9FF;
-    const lightOrange = 0xFFB347;
+    // Silver color
+    const silver = 0xC0C0C0;
 
-    // Cube dimensions - 2X LARGER on mobile
-    const cubeSize = isMobile ? 2.4 : 1.6;
+    // Cube dimensions
+    const cubeSize = isMobile ? 1.2 : 1.6;
     const halfCube = cubeSize / 2;
 
-    // Geometry
+    // Geometry - reuse single instance
     const geometry = new THREE.BoxGeometry(cubeSize, cubeSize, cubeSize);
 
-    // Bright icy blue face material - half transparent
+    // Silver face material - half transparent (0.5 opacity)
     const faceMaterial = new THREE.MeshBasicMaterial({
-      color: icyBlue,
+      color: silver,
       transparent: true,
       opacity: 0.5,
       side: THREE.FrontSide,
@@ -62,10 +63,10 @@ export default function HeroCanvas({ className = '' }: HeroCanvasProps) {
     cube.rotation.z = THREE.MathUtils.degToRad(45);
     scene.add(cube);
 
-    // ORANGE edges
+    // Silver glowing edges - main
     const edgesGeometry = new THREE.EdgesGeometry(geometry);
     const edgesMaterial = new THREE.LineBasicMaterial({ 
-      color: lightOrange, 
+      color: silver, 
       transparent: true, 
       opacity: 1,
     });
@@ -73,14 +74,14 @@ export default function HeroCanvas({ className = '' }: HeroCanvasProps) {
     edges.rotation.copy(cube.rotation);
     scene.add(edges);
 
-    // ORANGE glow layers around edges
+    // Silver glow layers around edges
     const glowLayers: THREE.LineSegments[] = [];
     for (let i = 1; i <= 2; i++) {
       const glowGeo = new THREE.EdgesGeometry(
         new THREE.BoxGeometry(cubeSize + i * 0.04, cubeSize + i * 0.04, cubeSize + i * 0.04)
       );
       const glowMat = new THREE.LineBasicMaterial({ 
-        color: lightOrange, 
+        color: silver, 
         transparent: true, 
         opacity: 0.4 / i,
       });
@@ -112,8 +113,8 @@ export default function HeroCanvas({ className = '' }: HeroCanvasProps) {
       depthWrite: false,
     });
 
-    // Logo size - larger on mobile too
-    const logoSize = isMobile ? 1.1 : 0.75;
+    // Logo size
+    const logoSize = isMobile ? 0.55 : 0.75;
     const logoOffset = 0.01;
 
     // Face positions/rotations
@@ -140,25 +141,25 @@ export default function HeroCanvas({ className = '' }: HeroCanvasProps) {
       cube.add(mesh);
     }
 
-    // Particles - desktop only, orange
+    // Particles - desktop only, SMALLER radius
     let particlesMesh: THREE.InstancedMesh | null = null;
     const particleCount = 8;
-    const particleRadius = 2.0;
+    const particleRadius = 1.4; // Much smaller
     const dummy = new THREE.Object3D();
 
     if (!isMobile) {
       const particleGeo = new THREE.SphereGeometry(0.03, 6, 6);
-      const particleMat = new THREE.MeshBasicMaterial({ color: lightOrange });
+      const particleMat = new THREE.MeshBasicMaterial({ color: silver });
       particlesMesh = new THREE.InstancedMesh(particleGeo, particleMat, particleCount);
       scene.add(particlesMesh);
     }
 
-    // Orbital ring - desktop only, orange
+    // Orbital ring - desktop only, SMALLER
     let ring: THREE.Mesh | null = null;
     if (!isMobile) {
-      const ringGeo = new THREE.RingGeometry(2.0, 2.03, 48);
+      const ringGeo = new THREE.RingGeometry(1.5, 1.53, 48); // Much smaller
       const ringMat = new THREE.MeshBasicMaterial({ 
-        color: lightOrange, 
+        color: silver, 
         transparent: true, 
         opacity: 0.3, 
         side: THREE.DoubleSide 
@@ -171,9 +172,20 @@ export default function HeroCanvas({ className = '' }: HeroCanvasProps) {
     const rotationSpeed = isMobile ? 0.003 : 0.004;
     let animationId: number;
     let time = 0;
+    
+    // Visibility check - stop rendering when tab hidden
+    let isVisible = true;
+    const handleVisibilityChange = () => {
+      isVisible = document.visibilityState === 'visible';
+    };
+    document.addEventListener('visibilitychange', handleVisibilityChange);
 
     const animate = () => {
       animationId = requestAnimationFrame(animate);
+      
+      // Skip if tab not visible
+      if (!isVisible) return;
+      
       time += 0.016;
 
       // Rotate cube + edges + glow layers
@@ -208,21 +220,27 @@ export default function HeroCanvas({ className = '' }: HeroCanvasProps) {
 
     animate();
 
-    // Resize handler
+    // Debounced resize handler
+    let resizeTimeout: ReturnType<typeof setTimeout>;
     const handleResize = () => {
-      if (!containerRef.current) return;
-      const w = containerRef.current.clientWidth;
-      const h = containerRef.current.clientHeight;
-      camera.aspect = w / h;
-      camera.updateProjectionMatrix();
-      renderer.setSize(w, h);
+      clearTimeout(resizeTimeout);
+      resizeTimeout = setTimeout(() => {
+        if (!containerRef.current) return;
+        const w = containerRef.current.clientWidth;
+        const h = containerRef.current.clientHeight;
+        camera.aspect = w / h;
+        camera.updateProjectionMatrix();
+        renderer.setSize(w, h);
+      }, 100);
     };
     window.addEventListener('resize', handleResize);
 
     // Cleanup
     return () => {
       cancelAnimationFrame(animationId);
+      clearTimeout(resizeTimeout);
       window.removeEventListener('resize', handleResize);
+      document.removeEventListener('visibilitychange', handleVisibilityChange);
       
       geometry.dispose();
       faceMaterial.dispose();
