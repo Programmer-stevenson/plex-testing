@@ -1,11 +1,24 @@
 'use client';
 
+import { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
 import { Code, ChevronRight, ArrowRight, Layers, TrendingUp } from 'lucide-react';
-import { HeroCanvas } from '@/components/animations';
+import HeroCanvas from '@/components/animations/HeroCanvas';
 import { fadeInUp, fadeInDown, staggerContainer, letterAnimation } from '@/lib/animations';
 
 export default function HeroSection() {
+  const [isMobile, setIsMobile] = useState<boolean | null>(null);
+
+  useEffect(() => {
+    const check = () => {
+      const mobile = window.innerWidth < 1024;
+      setIsMobile(mobile);
+    };
+    check();
+    window.addEventListener('resize', check);
+    return () => window.removeEventListener('resize', check);
+  }, []);
+
   return (
     <section 
       id="home" 
@@ -57,7 +70,7 @@ export default function HeroSection() {
               </motion.div>
             </motion.div>
 
-            {/* Main headline with letter animation */}
+            {/* Main headline */}
             <motion.div variants={fadeInUp} className="space-y-4">
               <h1 className="text-5xl md:text-6xl lg:text-7xl font-bold leading-[1.1] tracking-tight text-center md:text-left">
                 <motion.span className="block text-[#EAEAEA]">
@@ -85,20 +98,22 @@ export default function HeroSection() {
               </h1>
             </motion.div>
 
-            {/* Mobile-only HeroCanvas */}
-            <motion.div
-              className="lg:hidden relative w-full h-64 my-4"
-              initial={{ opacity: 0, scale: 0.8 }}
-              animate={{ opacity: 1, scale: 1 }}
-              transition={{ duration: 0.8, delay: 1, ease: [0.22, 1, 0.36, 1] }}
-            >
-              <HeroCanvas className="absolute inset-0" />
-            </motion.div>
+            {/* MOBILE: Cube here (between headline and subheadline) */}
+            {isMobile === true && (
+              <motion.div
+                className="w-full h-52 flex items-center justify-center"
+                initial={{ opacity: 0, scale: 0.8 }}
+                animate={{ opacity: 1, scale: 1 }}
+                transition={{ duration: 0.8, delay: 1, ease: [0.22, 1, 0.36, 1] }}
+              >
+                <HeroCanvas />
+              </motion.div>
+            )}
 
             {/* Subheadline */}
             <motion.p
               variants={fadeInUp}
-              className="text-xl md:text-2xl text-[#A0A7B0] leading-relaxed max-w-xl"
+              className="text-xl md:text-2xl text-[#A0A7B0] leading-relaxed max-w-xl text-center md:text-left"
             >
               Full stack web development agency building scalable, custom-coded applications that drive business growth. No templates. No shortcuts. Just enterprise-quality code.
             </motion.p>
@@ -144,7 +159,7 @@ export default function HeroSection() {
             {/* Trust indicators */}
             <motion.div
               variants={fadeInUp}
-              className="flex flex-wrap items-center gap-8 pt-8 border-t border-[#142D4C]"
+              className="flex flex-wrap items-center justify-center md:justify-start gap-8 pt-8 border-t border-[#142D4C]"
             >
               {[
                 { icon: Code, label: "100% Custom Code" },
@@ -167,42 +182,46 @@ export default function HeroSection() {
             </motion.div>
           </motion.div>
 
-          {/* Right Column - Canvas Animation */}
-          <motion.div
-            className="hidden lg:block relative"
-            initial={{ opacity: 0, scale: 0.8 }}
-            animate={{ opacity: 1, scale: 1 }}
-            transition={{ duration: 1, delay: 0.5, ease: [0.22, 1, 0.36, 1] }}
-          >
-            <div className="relative w-full aspect-square max-w-lg mx-auto flex items-center justify-center">
-              <HeroCanvas className="absolute inset-0" />
-            </div>
-          </motion.div>
+          {/* DESKTOP: Right Column - Cube */}
+          {isMobile === false && (
+            <motion.div
+              className="relative"
+              initial={{ opacity: 0, scale: 0.8 }}
+              animate={{ opacity: 1, scale: 1 }}
+              transition={{ duration: 1, delay: 0.5, ease: [0.22, 1, 0.36, 1] }}
+            >
+              <div className="relative w-full aspect-square max-w-lg mx-auto flex items-center justify-center">
+                <HeroCanvas />
+              </div>
+            </motion.div>
+          )}
         </div>
       </div>
 
-      {/* Scroll indicator */}
-      <motion.div
-        className="hidden lg:block absolute bottom-8 left-1/2 -translate-x-1/2"
-        initial={{ opacity: 0, y: -20 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ delay: 2, duration: 0.5 }}
-      >
+      {/* Scroll indicator - desktop only */}
+      {isMobile === false && (
         <motion.div
-          className="flex flex-col items-center gap-2 cursor-pointer"
-          animate={{ y: [0, 10, 0] }}
-          transition={{ duration: 2, repeat: Infinity, ease: "easeInOut" }}
+          className="absolute bottom-8 left-1/2 -translate-x-1/2"
+          initial={{ opacity: 0, y: -20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 2, duration: 0.5 }}
         >
-          <span className="text-xs text-[#A0A7B0] uppercase tracking-widest">Scroll</span>
-          <div className="w-6 h-10 border-2 border-[#007BFF]/50 rounded-full flex items-start justify-center p-2">
-            <motion.div
-              className="w-1.5 h-1.5 bg-[#00C2CB] rounded-full"
-              animate={{ y: [0, 12, 0] }}
-              transition={{ duration: 1.5, repeat: Infinity, ease: "easeInOut" }}
-            />
-          </div>
+          <motion.div
+            className="flex flex-col items-center gap-2 cursor-pointer"
+            animate={{ y: [0, 10, 0] }}
+            transition={{ duration: 2, repeat: Infinity, ease: "easeInOut" }}
+          >
+            <span className="text-xs text-[#A0A7B0] uppercase tracking-widest">Scroll</span>
+            <div className="w-6 h-10 border-2 border-[#007BFF]/50 rounded-full flex items-start justify-center p-2">
+              <motion.div
+                className="w-1.5 h-1.5 bg-[#00C2CB] rounded-full"
+                animate={{ y: [0, 12, 0] }}
+                transition={{ duration: 1.5, repeat: Infinity, ease: "easeInOut" }}
+              />
+            </div>
+          </motion.div>
         </motion.div>
-      </motion.div>
+      )}
     </section>
   );
 }

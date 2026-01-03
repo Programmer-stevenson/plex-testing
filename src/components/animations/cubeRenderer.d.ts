@@ -1,0 +1,1 @@
+export function initCube(container: HTMLElement, logoSrc?: string): () => void;
