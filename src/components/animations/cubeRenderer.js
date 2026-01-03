@@ -1,7 +1,6 @@
 // ===========================================
-// THREE.JS CUBE - GPU ACCELERATED
-// One cube for all viewports, responsive sizing
-// Isolated from React, runs in own render loop
+// THREE.JS CUBE - MOBILE OPTIMIZED
+// Throttled 30fps, low-res textures, minimal overdraw
 // ===========================================
 
 import * as THREE from 'three';
@@ -12,111 +11,85 @@ export function initCube(container, logoSrc = '/plexxx.png') {
   const camera = new THREE.PerspectiveCamera(30, 1, 0.1, 1000);
   camera.position.z = 5;
   
+  // Force pixel ratio to 1 on mobile for performance
+  const isMobile = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent);
+  const pixelRatio = isMobile ? 1 : Math.min(window.devicePixelRatio, 2);
+  
   const renderer = new THREE.WebGLRenderer({ 
     alpha: true, 
-    antialias: true 
+    antialias: !isMobile, // Disable antialiasing on mobile
+    powerPreference: 'low-power'
   });
-  renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+  renderer.setPixelRatio(pixelRatio);
   renderer.setClearColor(0x000000, 0);
   
   container.appendChild(renderer.domElement);
   
-  // Responsive sizing based on container
   function resize() {
     const rect = container.getBoundingClientRect();
-    const size = Math.min(rect.width, rect.height, 400);
+    // Smaller size on mobile
+    const maxSize = isMobile ? 180 : 400;
+    const size = Math.min(rect.width, rect.height, maxSize);
     renderer.setSize(size, size);
     renderer.domElement.style.display = 'block';
     renderer.domElement.style.margin = '0 auto';
   }
   resize();
   
-  const textureLoader = new THREE.TextureLoader();
-  let logoTexture = null;
+  // Lower resolution textures for mobile (128 vs 256)
+  const texSize = isMobile ? 128 : 256;
   
-  textureLoader.load(logoSrc, (texture) => {
-    logoTexture = texture;
-    logoTexture.colorSpace = THREE.SRGBColorSpace;
-    updateFaceMaterials();
-  });
-  
-  function createGradientTexture() {
+  function createFaceTexture(hasLogo, logoImg) {
     const canvas = document.createElement('canvas');
-    canvas.width = 256;
-    canvas.height = 256;
+    canvas.width = texSize;
+    canvas.height = texSize;
     const ctx = canvas.getContext('2d');
     
-    const gradient = ctx.createLinearGradient(0, 0, 256, 256);
-    gradient.addColorStop(0, 'rgba(251, 146, 60, 0.6)');
-    gradient.addColorStop(0.35, 'rgba(14, 165, 233, 0.85)');
-    gradient.addColorStop(0.65, 'rgba(56, 189, 248, 0.9)');
-    gradient.addColorStop(1, 'rgba(186, 230, 253, 0.95)');
+    // Solid gradient - minty green to light blue
+    const gradient = ctx.createLinearGradient(0, 0, texSize, texSize);
+    gradient.addColorStop(0, '#3EE4A8');
+    gradient.addColorStop(0.5, '#00C2CB');
+    gradient.addColorStop(1, '#38BDF8');
     
     ctx.fillStyle = gradient;
-    ctx.fillRect(0, 0, 256, 256);
+    ctx.fillRect(0, 0, texSize, texSize);
     
-    ctx.strokeStyle = 'rgba(56, 189, 248, 0.9)';
-    ctx.lineWidth = 8;
-    ctx.strokeRect(4, 4, 248, 248);
+    // Border
+    ctx.strokeStyle = '#00C2CB';
+    ctx.lineWidth = isMobile ? 3 : 6;
+    ctx.strokeRect(2, 2, texSize - 4, texSize - 4);
     
-    const texture = new THREE.CanvasTexture(canvas);
-    texture.colorSpace = THREE.SRGBColorSpace;
-    return texture;
-  }
-  
-  function createFaceTexture(gradientCanvas, logoImg) {
-    const canvas = document.createElement('canvas');
-    canvas.width = 256;
-    canvas.height = 256;
-    const ctx = canvas.getContext('2d');
-    
-    ctx.drawImage(gradientCanvas, 0, 0);
-    
-    if (logoImg) {
-      const logoSize = 256 * 0.6;
-      const offset = (256 - logoSize) / 2;
-      ctx.globalAlpha = 0.9;
+    // Logo
+    if (hasLogo && logoImg) {
+      const logoSize = texSize * 0.4;
+      const offset = (texSize - logoSize) / 2;
+      ctx.globalAlpha = 0.8;
       ctx.drawImage(logoImg, offset, offset, logoSize, logoSize);
     }
     
-    ctx.globalAlpha = 1;
-    ctx.strokeStyle = 'rgba(56, 189, 248, 0.9)';
-    ctx.lineWidth = 6;
-    ctx.strokeRect(3, 3, 250, 250);
-    
     const texture = new THREE.CanvasTexture(canvas);
     texture.colorSpace = THREE.SRGBColorSpace;
+    texture.needsUpdate = true;
     return texture;
   }
   
-  const gradientCanvas = document.createElement('canvas');
-  gradientCanvas.width = 256;
-  gradientCanvas.height = 256;
-  const gradCtx = gradientCanvas.getContext('2d');
+  // Create geometry
+  const geometry = new THREE.BoxGeometry(1.4, 1.4, 1.4);
   
-  const gradient = gradCtx.createLinearGradient(0, 0, 256, 256);
-  gradient.addColorStop(0, 'rgba(251, 146, 60, 0.6)');
-  gradient.addColorStop(0.35, 'rgba(14, 165, 233, 0.85)');
-  gradient.addColorStop(0.65, 'rgba(56, 189, 248, 0.9)');
-  gradient.addColorStop(1, 'rgba(186, 230, 253, 0.95)');
-  gradCtx.fillStyle = gradient;
-  gradCtx.fillRect(0, 0, 256, 256);
-  
-  const geometry = new THREE.BoxGeometry(1.5, 1.5, 1.5);
-  
+  // Create initial materials (no logo yet)
   const materials = [];
   for (let i = 0; i < 6; i++) {
-    const texture = createGradientTexture();
+    const texture = createFaceTexture(false, null);
     materials.push(new THREE.MeshBasicMaterial({
       map: texture,
-      transparent: true,
+      transparent: false, // Solid for performance
       side: THREE.FrontSide
     }));
   }
   
   const cube = new THREE.Mesh(geometry, materials);
   
-  // Tilt to match original CSS cube
+  // Tilt
   const TILT_X = -35 * Math.PI / 180;
   const TILT_Z = 45 * Math.PI / 180;
   
@@ -126,37 +99,53 @@ export function initCube(container, logoSrc = '/plexxx.png') {
   tiltGroup.add(cube);
   scene.add(tiltGroup);
   
-  function updateFaceMaterials() {
-    if (!logoTexture) return;
-    const logoImg = logoTexture.image;
+  // Load logo and update textures once
+  const logoImg = new Image();
+  logoImg.crossOrigin = 'anonymous';
+  logoImg.onload = () => {
     for (let i = 0; i < 6; i++) {
-      const texture = createFaceTexture(gradientCanvas, logoImg);
+      const texture = createFaceTexture(true, logoImg);
+      materials[i].map.dispose();
       materials[i].map = texture;
       materials[i].needsUpdate = true;
     }
-  }
+  };
+  logoImg.src = logoSrc;
   
+  // Animation - throttled to 30fps on mobile
   let animationId = null;
   let lastTime = 0;
-  const ROTATION_SPEED = (2 * Math.PI) / 20000; // 20s per rotation
+  const targetFPS = isMobile ? 30 : 60;
+  const frameInterval = 1000 / targetFPS;
+  const ROTATION_SPEED = (2 * Math.PI) / 20000;
   
   function animate(currentTime) {
-    const delta = lastTime ? currentTime - lastTime : 16;
-    lastTime = currentTime;
+    animationId = requestAnimationFrame(animate);
     
-    cube.rotation.y += ROTATION_SPEED * delta;
+    const elapsed = currentTime - lastTime;
+    
+    if (elapsed < frameInterval) return;
+    
+    lastTime = currentTime - (elapsed % frameInterval);
+    
+    cube.rotation.y += ROTATION_SPEED * frameInterval;
     
     renderer.render(scene, camera);
-    animationId = requestAnimationFrame(animate);
   }
   
   animationId = requestAnimationFrame(animate);
   
-  const resizeObserver = new ResizeObserver(resize);
+  // Debounced resize
+  let resizeTimeout;
+  const resizeObserver = new ResizeObserver(() => {
+    clearTimeout(resizeTimeout);
+    resizeTimeout = setTimeout(resize, 100);
+  });
   resizeObserver.observe(container);
   
   return function destroy() {
     if (animationId) cancelAnimationFrame(animationId);
+    clearTimeout(resizeTimeout);
     resizeObserver.disconnect();
     
     geometry.dispose();
