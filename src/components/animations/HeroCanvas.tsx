@@ -1,15 +1,13 @@
 'use client';
 
-import React, { useRef, useEffect } from 'react';
-import * as THREE from 'three';
-import { useIsMobile } from '@/hooks';
+import React from 'react';
 
 interface HeroCanvasProps {
   className?: string;
 }
 
 // ===========================================
-// CSS 3D CUBE COMPONENT - MOBILE ONLY
+// CSS 3D CUBE COMPONENT - MOBILE & DESKTOP
 // Pure CSS transforms, no WebGL, 60fps guaranteed
 // ===========================================
 function CSSCube() {
@@ -57,12 +55,41 @@ function CSSCube() {
           transform: rotateX(-35deg) rotateZ(45deg);
         }
 
+        @media (min-width: 1024px) {
+          .css-cube-wrapper {
+            width: 200px;
+            height: 200px;
+          }
+          .css-cube-face {
+            width: 200px !important;
+            height: 200px !important;
+            background: 
+              radial-gradient(circle at 15% 15%, rgba(234, 88, 12, 0.5) 0%, transparent 35%),
+              radial-gradient(circle at 85% 80%, rgba(194, 65, 12, 0.4) 0%, transparent 30%),
+              radial-gradient(circle at 50% 90%, rgba(251, 146, 60, 0.35) 0%, transparent 40%),
+              linear-gradient(135deg, rgba(251, 146, 60, 0.4) 0%, rgba(14, 165, 233, 0.7) 35%, rgba(56, 189, 248, 0.85) 65%, rgba(186, 230, 253, 0.9) 100%) !important;
+            border: 3px solid rgba(56, 189, 248, 0.9) !important;
+            box-shadow: 
+              0 0 30px rgba(14, 165, 233, 0.7),
+              0 0 60px rgba(56, 189, 248, 0.5),
+              0 0 15px rgba(234, 88, 12, 0.4),
+              inset 0 0 40px rgba(186, 230, 253, 0.5),
+              inset 0 0 20px rgba(56, 189, 248, 0.4) !important;
+          }
+          .front  { transform: translateZ(100px) !important; }
+          .back   { transform: rotateY(180deg) translateZ(100px) !important; }
+          .right  { transform: rotateY(90deg) translateZ(100px) !important; }
+          .left   { transform: rotateY(-90deg) translateZ(100px) !important; }
+          .top    { transform: rotateX(90deg) translateZ(100px) !important; }
+          .bottom { transform: rotateX(-90deg) translateZ(100px) !important; }
+        }
+
         .css-cube {
           width: 100%;
           height: 100%;
           position: relative;
           transform-style: preserve-3d;
-          animation: css-cube-rotate 15s linear infinite;
+          animation: css-cube-rotate 20s linear infinite;
         }
 
         @keyframes css-cube-rotate {
@@ -70,19 +97,24 @@ function CSSCube() {
           to { transform: rotateY(360deg); }
         }
 
+        @media (min-width: 1024px) {
+          .css-cube {
+            animation-duration: 15s;
+          }
+        }
+
         .css-cube-face {
           position: absolute;
           width: 150px;
           height: 150px;
-          background: rgba(192, 192, 192, 0.5);
-          border: 2px solid rgba(192, 192, 192, 1);
-          box-shadow: 
-            0 0 10px rgba(192, 192, 192, 0.3),
-            inset 0 0 20px rgba(192, 192, 192, 0.1);
+          background: linear-gradient(135deg, rgba(251, 146, 60, 0.4) 0%, rgba(14, 165, 233, 0.7) 35%, rgba(56, 189, 248, 0.85) 65%, rgba(186, 230, 253, 0.9) 100%);
+          border: 2px solid rgba(56, 189, 248, 0.8);
+          box-shadow: 0 0 20px rgba(14, 165, 233, 0.5);
           display: flex;
           align-items: center;
           justify-content: center;
           backface-visibility: visible;
+          will-change: transform;
         }
 
         .css-cube-logo {
@@ -97,228 +129,26 @@ function CSSCube() {
         .left   { transform: rotateY(-90deg) translateZ(75px); }
         .top    { transform: rotateX(90deg) translateZ(75px); }
         .bottom { transform: rotateX(-90deg) translateZ(75px); }
+
+        /* Respect reduced motion preference (iOS Low Power Mode, accessibility settings) */
+        @media (prefers-reduced-motion: reduce) {
+          .css-cube {
+            animation: none;
+            transform: rotateY(45deg);
+          }
+        }
       `}</style>
     </div>
   );
 }
 
 // ===========================================
-// MAIN COMPONENT
+// MAIN COMPONENT - CSS CUBE ONLY (NO THREE.JS)
 // ===========================================
 export default function HeroCanvas({ className = '' }: HeroCanvasProps) {
-  const containerRef = useRef<HTMLDivElement>(null);
-  const isMobile = useIsMobile();
-
-  // ===========================================
-  // THREE.JS - DESKTOP ONLY
-  // ===========================================
-  useEffect(() => {
-    // Skip Three.js on mobile - use CSS cube instead
-    if (isMobile || !containerRef.current) return;
-
-    const container = containerRef.current;
-    const width = container.clientWidth || 300;
-    const height = container.clientHeight || 300;
-
-    const scene = new THREE.Scene();
-    const camera = new THREE.PerspectiveCamera(50, width / height, 0.1, 1000);
-    camera.position.z = 5;
-
-    const renderer = new THREE.WebGLRenderer({ 
-      antialias: true, 
-      alpha: true,
-      premultipliedAlpha: false,
-    });
-    renderer.setSize(width, height);
-    renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
-    renderer.setClearColor(0x000000, 0);
-    container.appendChild(renderer.domElement);
-
-    const silver = 0xC0C0C0;
-    const cubeSize = 1.6;
-    const halfCube = cubeSize / 2;
-
-    const geometry = new THREE.BoxGeometry(cubeSize, cubeSize, cubeSize);
-    const faceMaterial = new THREE.MeshBasicMaterial({
-      color: silver,
-      transparent: true,
-      opacity: 0.5,
-      side: THREE.FrontSide,
-      depthWrite: false,
-    });
-
-    const cube = new THREE.Mesh(geometry, faceMaterial);
-    cube.rotation.x = THREE.MathUtils.degToRad(-35);
-    cube.rotation.z = THREE.MathUtils.degToRad(45);
-    scene.add(cube);
-
-    const edgesGeometry = new THREE.EdgesGeometry(geometry);
-    const edgesMaterial = new THREE.LineBasicMaterial({ 
-      color: silver, 
-      transparent: true, 
-      opacity: 1,
-    });
-    const edges = new THREE.LineSegments(edgesGeometry, edgesMaterial);
-    edges.rotation.copy(cube.rotation);
-    scene.add(edges);
-
-    const glowLayers: THREE.LineSegments[] = [];
-    for (let i = 1; i <= 2; i++) {
-      const glowGeo = new THREE.EdgesGeometry(
-        new THREE.BoxGeometry(cubeSize + i * 0.04, cubeSize + i * 0.04, cubeSize + i * 0.04)
-      );
-      const glowMat = new THREE.LineBasicMaterial({ 
-        color: silver, 
-        transparent: true, 
-        opacity: 0.4 / i,
-      });
-      const glow = new THREE.LineSegments(glowGeo, glowMat);
-      glow.rotation.copy(cube.rotation);
-      glowLayers.push(glow);
-      scene.add(glow);
-    }
-
-    const textureLoader = new THREE.TextureLoader();
-    const logoTexture = textureLoader.load('/plexxx.png', (texture) => {
-      const imgAspect = texture.image.width / texture.image.height;
-      logoPlanes.forEach(plane => {
-        if (imgAspect > 1) {
-          plane.scale.set(logoSize, logoSize / imgAspect, 1);
-        } else {
-          plane.scale.set(logoSize * imgAspect, logoSize, 1);
-        }
-      });
-    });
-    logoTexture.colorSpace = THREE.SRGBColorSpace;
-
-    const logoMaterial = new THREE.MeshBasicMaterial({
-      map: logoTexture,
-      transparent: true,
-      side: THREE.DoubleSide,
-      depthWrite: false,
-    });
-
-    const logoSize = 0.75;
-    const logoOffset = 0.01;
-
-    const faceData: [number, number, number, number, number, number][] = [
-      [0, 0, halfCube + logoOffset, 0, 0, 0],
-      [0, 0, -halfCube - logoOffset, 0, Math.PI, 0],
-      [halfCube + logoOffset, 0, 0, 0, Math.PI / 2, 0],
-      [-halfCube - logoOffset, 0, 0, 0, -Math.PI / 2, 0],
-      [0, halfCube + logoOffset, 0, -Math.PI / 2, 0, 0],
-      [0, -halfCube - logoOffset, 0, Math.PI / 2, 0, 0],
-    ];
-
-    const logoGeometry = new THREE.PlaneGeometry(1, 1);
-    const logoPlanes: THREE.Mesh[] = [];
-
-    for (let i = 0; i < 6; i++) {
-      const [px, py, pz, rx, ry, rz] = faceData[i];
-      const mesh = new THREE.Mesh(logoGeometry, logoMaterial);
-      mesh.position.set(px, py, pz);
-      mesh.rotation.set(rx, ry, rz);
-      mesh.scale.set(logoSize, logoSize, 1);
-      logoPlanes.push(mesh);
-      cube.add(mesh);
-    }
-
-    // Particles
-    const particleGeo = new THREE.SphereGeometry(0.03, 6, 6);
-    const particleMat = new THREE.MeshBasicMaterial({ color: silver });
-    const particlesMesh = new THREE.InstancedMesh(particleGeo, particleMat, 8);
-    scene.add(particlesMesh);
-
-    // Ring
-    const ringGeo = new THREE.RingGeometry(1.5, 1.53, 48);
-    const ringMat = new THREE.MeshBasicMaterial({ 
-      color: silver, 
-      transparent: true, 
-      opacity: 0.3, 
-      side: THREE.DoubleSide 
-    });
-    const ring = new THREE.Mesh(ringGeo, ringMat);
-    scene.add(ring);
-
-    const dummy = new THREE.Object3D();
-    let animationId: number;
-    let time = 0;
-
-    const animate = () => {
-      animationId = requestAnimationFrame(animate);
-      time += 0.016;
-
-      cube.rotation.y += 0.004;
-      edges.rotation.y += 0.004;
-      glowLayers.forEach(g => g.rotation.y += 0.004);
-
-      for (let i = 0; i < 8; i++) {
-        const angle = (i / 8) * Math.PI * 2 + time * 0.5;
-        dummy.position.set(Math.cos(angle) * 1.4, Math.sin(angle) * 1.4, 0);
-        const s = 0.8 + Math.sin(time * 3 + i) * 0.3;
-        dummy.scale.set(s, s, s);
-        dummy.updateMatrix();
-        particlesMesh.setMatrixAt(i, dummy.matrix);
-      }
-      particlesMesh.instanceMatrix.needsUpdate = true;
-
-      ring.rotation.z += 0.002;
-
-      renderer.render(scene, camera);
-    };
-
-    animate();
-
-    const handleResize = () => {
-      if (!containerRef.current) return;
-      const w = containerRef.current.clientWidth;
-      const h = containerRef.current.clientHeight;
-      camera.aspect = w / h;
-      camera.updateProjectionMatrix();
-      renderer.setSize(w, h);
-    };
-    window.addEventListener('resize', handleResize);
-
-    return () => {
-      cancelAnimationFrame(animationId);
-      window.removeEventListener('resize', handleResize);
-      geometry.dispose();
-      faceMaterial.dispose();
-      edgesGeometry.dispose();
-      edgesMaterial.dispose();
-      logoGeometry.dispose();
-      logoMaterial.dispose();
-      logoTexture.dispose();
-      glowLayers.forEach(g => {
-        g.geometry.dispose();
-        (g.material as THREE.Material).dispose();
-      });
-      renderer.dispose();
-      if (container.contains(renderer.domElement)) {
-        container.removeChild(renderer.domElement);
-      }
-    };
-  }, [isMobile]);
-
-  // ===========================================
-  // RENDER
-  // ===========================================
-  
-  // Mobile: CSS 3D Cube (60fps guaranteed)
-  if (isMobile) {
-    return (
-      <div className={`relative w-full h-full min-h-[250px] ${className}`}>
-        <CSSCube />
-      </div>
-    );
-  }
-
-  // Desktop: Three.js
   return (
-    <div 
-      ref={containerRef} 
-      className={`relative w-full h-full min-h-[250px] ${className}`}
-      style={{ background: 'transparent' }}
-    />
+    <div className={`relative w-full h-full min-h-[250px] ${className}`}>
+      <CSSCube />
+    </div>
   );
 }

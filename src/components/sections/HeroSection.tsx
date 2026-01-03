@@ -61,7 +61,7 @@ export default function HeroSection() {
             <motion.div variants={fadeInUp} className="space-y-4">
               <h1 className="text-5xl md:text-6xl lg:text-7xl font-bold leading-[1.1] tracking-tight text-center md:text-left">
                 <motion.span className="block text-[#EAEAEA]">
-                  {".".split("").map((char, i) => (
+                  {"Design. Marketing. Growth.".split("").map((char, i) => (
                     <motion.span
                       key={i}
                       custom={i}
